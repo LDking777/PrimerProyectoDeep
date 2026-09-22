@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clasificador de prendas · Fashion-MNIST</title>
+
+<!--
+  PROYECTO 1 - CLASIFICADOR DE PRENDAS
+
+  IMPORTANTE:
+  1. Este HTML espera un modelo convertido a TensorFlow.js.
+  2. Por defecto busca: ./modelo/model.json
+  3. Los archivos .bin generados por TensorFlow.js deben quedar junto a model.json.
+  4. Si tu modelo está en otra carpeta, cambia MODEL_URL en el JavaScript.
+-->
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+
+<style>
+:root{
+  --bg:#f4f6f8;
+  --card:#ffffff;
+  --text:#17202a;
+  --muted:#65717d;
+  --line:#d9e0e6;
+  --accent:#2563eb;
+  --accent2:#1d4ed8;
+  --success:#16803c;
+  --danger:#c0392b;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:Inter,Segoe UI,Arial,sans-serif;
+  background:var(--bg);
+  color:var(--text);
+}
+header{
+  background:#111827;
+  color:white;
+  padding:28px 20px;
+}
+header .wrap, main{max-width:1100px;margin:auto}
+h1{margin:0 0 8px;font-size:30px}
+.subtitle{margin:0;color:#cbd5e1}
+main{padding:24px 20px 40px}
+.grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:20px;
+}
+.card{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:20px;
+  box-shadow:0 5px 18px rgba(15,23,42,.05);
+}
+.card.full{grid-column:1/-1}
+h2{font-size:18px;margin:0 0 14px}
+.instructions{
+  color:var(--muted);
+  line-height:1.55;
+  font-size:14px;
+}
+.canvas-wrap{
+  display:flex;
+  justify-content:center;
+  padding:12px 0 18px;
+}
+#drawingCanvas{
+  width:min(420px,100%);
+  aspect-ratio:1/1;
+  background:#000;
+  border:3px solid #1f2937;
+  border-radius:12px;
+  cursor:crosshair;
+  touch-action:none;
+  image-rendering:auto;
+}
+.controls{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+}
+button{
+  border:0;
+  border-radius:10px;
+  padding:11px 16px;
+  font-weight:700;
+  cursor:pointer;
+}
+.primary{background:var(--accent);color:white}
+.primary:hover{background:var(--accent2)}
+.secondary{background:#e5e7eb;color:#111827}
+button:disabled{opacity:.5;cursor:not-allowed}
+.status{
+  margin-top:12px;
+  padding:10px 12px;
+  background:#f1f5f9;
+  border-radius:9px;
+  color:var(--muted);
+  font-size:13px;
+}
+.result{
+  text-align:center;
+  padding:12px 0;
+}
+.prediction{
+  font-size:34px;
+  font-weight:800;
+  margin:8px 0;
+}
+.confidence{
+  color:var(--muted);
+  margin-bottom:16px;
+}
+.bar-row{
+  display:grid;
+  grid-template-columns:110px 1fr 65px;
+  gap:8px;
+  align-items:center;
+  margin:8px 0;
+  font-size:13px;
+}
+.bar-bg{
+  height:10px;
+  background:#e5e7eb;
+  border-radius:99px;
+  overflow:hidden;
+}
+.bar{
+  height:100%;
+  width:0;
+  background:var(--accent);
+  border-radius:99px;
+  transition:width .25s ease;
+}
+.preview{
+  display:flex;
+  gap:18px;
+  align-items:center;
+  flex-wrap:wrap;
+}
+#preview28{
+  width:140px;
+  height:140px;
+  image-rendering:pixelated;
+  border:1px solid var(--line);
+  background:#000;
+}
+.note{
+  border-left:4px solid var(--accent);
+  padding:10px 14px;
+  background:#eff6ff;
+  color:#334155;
+  font-size:14px;
+  line-height:1.5;
+}
+code{
+  background:#eef2f7;
+  padding:2px 5px;
+  border-radius:4px;
+}
+.footer{
+  margin-top:20px;
+  color:var(--muted);
+  font-size:12px;
+  text-align:center;
+}
+@media(max-width:800px){
+  .grid{grid-template-columns:1fr}
+  .card.full{grid-column:auto}
+}
+</style>
+</head>
+
+<body>
+<header>
+  <div class="wrap">
+    <h1>👕 Clasificador de prendas</h1>
+    <p class="subtitle">Fashion-MNIST · TensorFlow.js · Inferencia directamente en el navegador</p>
+  </div>
+</header>
+
+<main>
+  <div class="grid">
+
+    <section class="card">
+      <h2>1. Modelo</h2>
+      <p class="instructions">
+        El navegador cargará el modelo exportado a TensorFlow.js. Por defecto se busca
+        <code>./modelo/model.json</code>.
+      </p>
+
+      <div class="note">
+        <strong>Antes de ejecutar:</strong><br>
+        Coloca <code>model.json</code> y los archivos <code>.bin</code> generados por TensorFlow.js
+        dentro de la carpeta <code>modelo/</code>, al mismo nivel que este HTML.
+      </div>
+
+      <div class="status" id="modelStatus">⏳ Cargando modelo...</div>
+    </section>
+
+    <section class="card">
+      <h2>2. Dibuja una prenda</h2>
+      <p class="instructions">
+        Dibuja con el mouse o con el dedo una representación sencilla de una prenda.
+        El modelo fue entrenado con imágenes de 28 × 28 píxeles.
+      </p>
+
+      <div class="canvas-wrap">
+        <canvas id="drawingCanvas" width="280" height="280"></canvas>
+      </div>
+
+      <div class="controls">
+        <button class="secondary" id="clearBtn">Limpiar</button>
+        <button class="primary" id="predictBtn" disabled>Clasificar dibujo</button>
+      </div>
+
+      <div class="status">
+        Consejo: intenta dibujar una sola prenda, centrada y relativamente grande,
+        usando trazos blancos sobre el fondo negro.
+      </div>
+    </section>
+
+    <section class="card full">
+      <h2>3. Resultado</h2>
+
+      <div class="result">
+        <div class="prediction" id="prediction">—</div>
+        <div class="confidence" id="confidence">Dibuja una prenda y presiona «Clasificar dibujo».</div>
+      </div>
+
+      <div id="probabilities"></div>
+    </section>
+
+    <section class="card full">
+      <h2>4. ¿Qué está recibiendo realmente el modelo?</h2>
+
+      <div class="preview">
+        <canvas id="preview28" width="28" height="28"></canvas>
+        <div class="instructions">
+          <p>
+            El dibujo realizado en el canvas grande se reduce a <strong>28 × 28</strong> píxeles,
+            se convierte a valores numéricos y se normaliza al rango aproximado <strong>0–1</strong>.
+          </p>
+          <p>
+            La entrada enviada al modelo tiene la forma:
+            <code>[1, 28, 28, 1]</code>.
+          </p>
+          <p>
+            Esto permite conectar la interfaz web con el mismo formato de entrada utilizado
+            durante el entrenamiento.
+          </p>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <p class="footer">
+    Actividad académica · Inteligencia Artificial: Fundamentos de Deep Learning
+  </p>
+</main>
+
+<script>
+/* ============================================================
+   CONFIGURACIÓN
+   ============================================================ */
+
+const MODEL_URL = "./modelo/model.json";
+
+/*
+  Estas etiquetas corresponden a las clases estándar de Fashion-MNIST.
+  Deben coincidir con el orden utilizado durante el entrenamiento.
+*/
+const CLASS_NAMES = [
+  "Camiseta / Top",
+  "Pantalón",
+  "Suéter",
+  "Vestido",
+  "Abrigo",
+  "Sandalia",
+  "Camisa",
+  "Zapatilla",
+  "Bolso",
+  "Bota"
+];
+
+/* ============================================================
+   REFERENCIAS
+   ============================================================ */
+
+const canvas = document.getElementById("drawingCanvas");
+const ctx = canvas.getContext("2d");
+
+const preview = document.getElementById("preview28");
+const previewCtx = preview.getContext("2d");
+
+const modelStatus = document.getElementById("modelStatus");
+const predictBtn = document.getElementById("predictBtn");
+const clearBtn = document.getElementById("clearBtn");
+const predictionEl = document.getElementById("prediction");
+const confidenceEl = document.getElementById("confidence");
+const probabilitiesEl = document.getElementById("probabilities");
+
+let model = null;
+let drawing = false;
+
+/* ============================================================
+   CANVAS
+   ============================================================ */
+
+function resetCanvas() {
+  ctx.fillStyle = "#000";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.strokeStyle = "#fff";
+  ctx.lineWidth = 18;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+
+  previewCtx.fillStyle = "#000";
+  previewCtx.fillRect(0, 0, 28, 28);
+
+  predictionEl.textContent = "—";
+  confidenceEl.textContent =
+    "Dibuja una prenda y presiona «Clasificar dibujo».";
+  probabilitiesEl.innerHTML = "";
+}
+
+resetCanvas();
+
+function getPosition(event) {
+  const rect = canvas.getBoundingClientRect();
+
+  const clientX = event.clientX !== undefined
+    ? event.clientX
+    : event.touches[0].clientX;
+
+  const clientY = event.clientY !== undefined
+    ? event.clientY
+    : event.touches[0].clientY;
+
+  return {
+    x: (clientX - rect.left) * canvas.width / rect.width,
+    y: (clientY - rect.top) * canvas.height / rect.height
+  };
+}
+
+function startDrawing(event) {
+  event.preventDefault();
+  drawing = true;
+
+  const p = getPosition(event);
+  ctx.beginPath();
+  ctx.moveTo(p.x, p.y);
+  ctx.lineTo(p.x + 0.1, p.y + 0.1);
+  ctx.stroke();
+}
+
+function draw(event) {
+  if (!drawing) return;
+  event.preventDefault();
+
+  const p = getPosition(event);
+  ctx.lineTo(p.x, p.y);
+  ctx.stroke();
+}
+
+function stopDrawing(event) {
+  if (event) event.preventDefault();
+  drawing = false;
+  ctx.closePath();
+}
+
+canvas.addEventListener("pointerdown", startDrawing);
+canvas.addEventListener("pointermove", draw);
+canvas.addEventListener("pointerup", stopDrawing);
+canvas.addEventListener("pointerleave", stopDrawing);
+canvas.addEventListener("pointercancel", stopDrawing);
+
+clearBtn.addEventListener("click", resetCanvas);
+
+/* ============================================================
+   MODELO
+   ============================================================ */
+
+async function loadModel() {
+  try {
+    modelStatus.textContent = "⏳ Cargando " + MODEL_URL + "...";
+
+    model = await tf.loadLayersModel(MODEL_URL);
+
+    console.log("Modelo cargado:", model);
+    console.log("Input shape:", model.inputs[0].shape);
+    console.log("Output shape:", model.outputs[0].shape);
+
+    modelStatus.textContent =
+      "✅ Modelo cargado correctamente. Entrada: " +
+      JSON.stringify(model.inputs[0].shape) +
+      " · Salida: " +
+      JSON.stringify(model.outputs[0].shape);
+
+    predictBtn.disabled = false;
+
+  } catch (error) {
+    console.error(error);
+
+    modelStatus.innerHTML =
+      "❌ No fue posible cargar el modelo. " +
+      "Verifica que exista <code>" + MODEL_URL +
+      "</code>, que los archivos .bin estén disponibles y que estés ejecutando " +
+      "la página mediante un servidor HTTP.";
+  }
+}
+
+loadModel();
+
+/* ============================================================
+   PREPROCESAMIENTO
+   ============================================================ */
+
+function canvasToTensor() {
+  /*
+    El canvas visible es 280 × 280.
+    Lo convertimos a 28 × 28, que es el tamaño de Fashion-MNIST.
+  */
+
+  const smallCanvas = document.createElement("canvas");
+  smallCanvas.width = 28;
+  smallCanvas.height = 28;
+
+  const smallCtx = smallCanvas.getContext("2d");
+
+  smallCtx.fillStyle = "#000";
+  smallCtx.fillRect(0, 0, 28, 28);
+
+  smallCtx.drawImage(
+    canvas,
+    0, 0, canvas.width, canvas.height,
+    0, 0, 28, 28
+  );
+
+  const imageData = smallCtx.getImageData(0, 0, 28, 28);
+
+  /*
+    Fashion-MNIST trabaja con una imagen en escala de grises.
+    Tomamos el canal rojo, que coincide con los trazos blancos
+    sobre fondo negro del canvas.
+  */
+
+  const values = new Float32Array(28 * 28);
+
+  for (let i = 0; i < 28 * 28; i++) {
+    values[i] = imageData.data[i * 4] / 255.0;
+  }
+
+  /*
+    Forma final:
+    [batch, alto, ancho, canales]
+    [1, 28, 28, 1]
+  */
+
+  const tensor = tf.tensor4d(values, [1, 28, 28, 1]);
+
+  /*
+    Mostramos la imagen de 28 × 28 que realmente se envía.
+  */
+  previewCtx.putImageData(
+    new ImageData(
+      (() => {
+        const rgba = new Uint8ClampedArray(28 * 28 * 4);
+        for (let i = 0; i < values.length; i++) {
+          const v = Math.round(values[i] * 255);
+          rgba[i*4] = v;
+          rgba[i*4+1] = v;
+          rgba[i*4+2] = v;
+          rgba[i*4+3] = 255;
+        }
+        return rgba;
+      })(),
+      28,
+      28
+    ),
+    0,
+    0
+  );
+
+  return tensor;
+}
+
+/* ============================================================
+   PREDICCIÓN
+   ============================================================ */
+
+async function predict() {
+  if (!model) {
+    alert("El modelo todavía no está cargado.");
+    return;
+  }
+
+  predictBtn.disabled = true;
+  predictBtn.textContent = "Clasificando...";
+
+  let inputTensor = null;
+  let outputTensor = null;
+
+  try {
+    inputTensor = canvasToTensor();
+
+    /*
+      model.predict() realiza la inferencia.
+      No se entrena el modelo aquí.
+    */
+    outputTensor = model.predict(inputTensor);
+
+    const probabilities = await outputTensor.data();
+
+    let maxIndex = 0;
+
+    for (let i = 1; i < probabilities.length; i++) {
+      if (probabilities[i] > probabilities[maxIndex]) {
+        maxIndex = i;
+      }
+    }
+
+    const confidence = probabilities[maxIndex] * 100;
+    const label = CLASS_NAMES[maxIndex] || ("Clase " + maxIndex);
+
+    predictionEl.textContent = label;
+    confidenceEl.textContent =
+      "Confianza de la predicción: " + confidence.toFixed(2) + "%";
+
+    probabilitiesEl.innerHTML = "";
+
+    for (let i = 0; i < Math.min(probabilities.length, CLASS_NAMES.length); i++) {
+      const row = document.createElement("div");
+      row.className = "bar-row";
+
+      const percentage = probabilities[i] * 100;
+
+      row.innerHTML = `
+        <div>${CLASS_NAMES[i]}</div>
+        <div class="bar-bg">
+          <div class="bar" style="width:${percentage.toFixed(2)}%"></div>
+        </div>
+        <div>${percentage.toFixed(2)}%</div>
+      `;
+
+      probabilitiesEl.appendChild(row);
+    }
+
+  } catch (error) {
+    console.error(error);
+    predictionEl.textContent = "Error";
+    confidenceEl.textContent = error.message;
+  } finally {
+    if (inputTensor) inputTensor.dispose();
+    if (outputTensor) outputTensor.dispose();
+
+    predictBtn.disabled = false;
+    predictBtn.textContent = "Clasificar dibujo";
+  }
+}
+
+predictBtn.addEventListener("click", predict);
+</script>
+</body>
+</html>
