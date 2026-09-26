@@ -1,0 +1,21 @@
+# Dependencias SOLO para convertir el .h5 a TensorFlow.js.
+#
+# IMPORTANTE: esto NO funciona en Windows nativo. tensorflowjs depende de
+# tensorflow-decision-forests, y ese paquete no publica wheels para win_amd64
+# (solo macosx y manylinux) en ninguna version. No es un problema de version
+# de Python: es falta de wheels para el sistema operativo.
+#
+# Opciones:
+#   Windows        -> usa convertir_a_tfjs.ipynb en Google Colab (recomendado)
+#   WSL2 / Linux   -> python -m venv .venv-tfjs
+#                     ./.venv-tfjs/bin/pip install -r requirements-tfjs.txt
+#                     ./.venv-tfjs/bin/python convertir_a_tfjs.py
+#   macOS          -> igual que Linux, con el venv en .venv-tfjs
+#
+# No instalar esto en el entorno principal de entrenamiento (Python 3.13),
+# porque tensorflow~=2.15aria entrar en conflicto con tensorflow==2.21.
+
+tensorflow==2.15.1
+tensorflowjs==4.22.0
+tensorflow-decision-forests==1.8.1
+python-dotenv==1.2.3

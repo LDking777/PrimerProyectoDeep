@@ -1,0 +1,9 @@
+.venv/
+.venv-tfjs/
+__pycache__/
+*.pyc
+
+# El .h5 se regenera con cada entrenamiento (540 KB).
+# graficas/ NO se ignora: los PNG son la evidencia de la corrida verificada.
+modelo_exportado.h5
+tfjs_target_dir/
